@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String  @id @default(uuid())
+  username     String  @unique
+  email        String  @unique
+  passwordHash String  @map("password_hash")
+  avatarUrl    String? @map("avatar_url")
+  createdAt    BigInt  @default(0) @map("created_at")
+  updatedAt    BigInt  @default(0) @map("updated_at")
+
+  items ListItem[]
+
+  @@map("users")
+}
+
+model ListItem {
+  id         String  @id @default(uuid())
+  userId     String  @map("user_id")
+  text       String  @default("")
+  completed  Boolean @default(false)
+  level      Int     @default(0) // 0-4
+  type       String  @default("task") // "task" | "heading"
+  orderIndex Float   @default(0) @map("order_index")
+  dueDate    String? @map("due_date")     // "YYYY-MM-DD" or null
+  startTime  String? @map("start_time")  // "HH:MM" or null
+  endTime    String? @map("end_time")    // "HH:MM" or null
+  category   String? @map("category")   // "学习" | "生活" | "工作" | null
+  createdAt  BigInt  @default(0) @map("created_at")
+  updatedAt  BigInt  @default(0) @map("updated_at")
+  deletedAt  BigInt? @map("deleted_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, orderIndex])
+  @@index([userId, deletedAt])
+  @@index([userId, dueDate])
+  @@index([deletedAt])
+  @@map("list_items")
+}

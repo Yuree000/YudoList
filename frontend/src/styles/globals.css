@@ -1,0 +1,205 @@
+@import "tailwindcss";
+
+/*
+ * YudoList Design System — Editorial / Warm Tone
+ * Fonts: Playfair Display (display) + Source Sans 3 (body)
+ * Palette: Amber/Stone warm tones with paper-like texture
+ */
+
+@theme {
+  /* Light mode colors (default) */
+  --color-page:         #FAF9F6;
+  --color-card:         #FFFFFF;
+  --color-text:         #1C1917;
+  --color-text-muted:   #78716C;
+  --color-primary:      #D97706;
+  --color-primary-hover:#B45309;
+  --color-success:      #059669;
+  --color-danger:       #DC2626;
+  --color-border:       #E7E5E4;
+  --color-input-bg:     #FAFAF9;
+
+  /* Typography */
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body:    'Source Sans 3', system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Dark mode overrides */
+.dark {
+  --color-page:         #1C1917;
+  --color-card:         #292524;
+  --color-text:         #F5F5F4;
+  --color-text-muted:   #A8A29E;
+  --color-primary:      #F59E0B;
+  --color-primary-hover:#D97706;
+  --color-success:      #34D399;
+  --color-danger:       #F87171;
+  --color-border:       #44403C;
+  --color-input-bg:     #1C1917;
+}
+
+/* Base styles */
+html {
+  color-scheme: light;
+  font-family: var(--font-body);
+  color: var(--color-text);
+  background-color: var(--color-page);
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+/* Smooth theme transitions */
+html, body, #root {
+  transition: color 200ms ease, background-color 200ms ease;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  position: relative;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 1rem;
+  pointer-events: none;
+  border: 1px solid color-mix(in srgb, var(--color-border) 78%, transparent);
+  border-radius: 2rem;
+  opacity: 0.75;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+::selection {
+  background-color: color-mix(in srgb, var(--color-primary) 24%, transparent);
+}
+
+/* Paper noise texture for light mode */
+html:not(.dark) body {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+}
+
+/* Subtle radial glow for dark mode */
+html.dark body {
+  background-image: radial-gradient(ellipse at 50% 30%, #292524 0%, #1C1917 70%);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.paper-panel {
+  border: 1px solid var(--color-border);
+  border-radius: 1.9rem;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-card) 96%, transparent), color-mix(in srgb, var(--color-card) 90%, transparent)),
+    color-mix(in srgb, var(--color-card) 92%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.52),
+    0 20px 50px rgba(28, 25, 23, 0.05);
+  backdrop-filter: blur(12px);
+}
+
+.section-kicker {
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.muted-copy {
+  color: var(--color-text-muted);
+}
+
+.hairline {
+  height: 1px;
+  width: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--color-border) 85%, transparent) 12%,
+    color-mix(in srgb, var(--color-border) 85%, transparent) 88%,
+    transparent
+  );
+}
+
+.ink-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 999px;
+  padding: 0.95rem 1.25rem;
+  border: 1px solid var(--color-primary);
+  background-color: var(--color-primary);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+
+.ink-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--color-primary) 26%, transparent);
+}
+
+.ink-button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-primary) 42%, transparent);
+  outline-offset: 3px;
+}
+
+.ink-button:disabled {
+  cursor: progress;
+  transform: none;
+  box-shadow: none;
+  opacity: 0.72;
+}
+
+.ink-button--ghost {
+  border-color: var(--color-border);
+  background-color: transparent;
+  color: var(--color-text);
+}
+
+.ink-button--ghost:hover {
+  box-shadow: 0 10px 25px rgba(28, 25, 23, 0.05);
+}
+
+.ink-input-shell {
+  border: 1px solid var(--color-border);
+  border-radius: 1.35rem;
+  background-color: color-mix(in srgb, var(--color-input-bg) 88%, transparent);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.ink-input-shell:focus-within {
+  border-color: color-mix(in srgb, var(--color-primary) 55%, var(--color-border));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 14%, transparent);
+  transform: translateY(-1px);
+}
