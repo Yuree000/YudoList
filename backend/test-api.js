@@ -4,6 +4,17 @@ const baseUrl = (process.argv[2] || process.env.BASE_URL || 'http://localhost:30
 let pass = 0;
 let fail = 0;
 
+function formatLocalDate(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function shiftLocalDate(dateStr, days) {
+  const [year, month, day] = dateStr.split('-').map((part) => parseInt(part, 10));
+  const date = new Date(year, month - 1, day);
+  date.setDate(date.getDate() + days);
+  return formatLocalDate(date);
+}
+
 function check(label, condition, details = '') {
   if (condition) {
     console.log(`  PASS  ${label}`);
@@ -123,6 +134,16 @@ async function main() {
     `status=${response.status}`,
   );
 
+  response = await request('/ai/parse', {
+    method: 'POST',
+    body: JSON.stringify({ input: '明天安排复盘' }),
+  });
+  check(
+    'POST /ai/parse (no token)',
+    response.status === 401 && response.body?.error === 'UNAUTHORIZED',
+    `status=${response.status}`,
+  );
+
   response = await request('/items', { headers: authHeaders(tokenA) });
   check(
     'GET /items (initial)',
@@ -153,7 +174,22 @@ async function main() {
     'PATCH /items/:id',
     response.status === 200 &&
       response.body?.data?.completed === true &&
-      response.body?.data?.level === 1,
+      response.body?.data?.level === 1 &&
+      typeof response.body?.data?.completedAt === 'number',
+    `status=${response.status}`,
+  );
+
+  response = await request('/activity?days=14', { headers: authHeaders(tokenA) });
+  const todayStr = formatLocalDate(new Date());
+  const todaysActivity = Array.isArray(response.body?.data)
+    ? response.body.data.find((day) => day.date === todayStr)
+    : null;
+  check(
+    'GET /activity',
+    response.status === 200 &&
+      Array.isArray(response.body?.data) &&
+      response.body.data.length === 14 &&
+      todaysActivity?.completedCount >= 1,
     `status=${response.status}`,
   );
 
@@ -175,6 +211,63 @@ async function main() {
   check(
     'GET /items (after reorder)',
     response.status === 200 && reorderedItem?.orderIndex === 99,
+    `status=${response.status}`,
+  );
+
+  const recurringStart = formatLocalDate(new Date());
+  const recurringEnd = shiftLocalDate(recurringStart, 6);
+  response = await request('/recurring', {
+    method: 'POST',
+    headers: authHeaders(tokenA),
+    body: JSON.stringify({
+      text: 'Daily standup',
+      startDate: recurringStart,
+      endDate: recurringEnd,
+      weekdaysMask: 127,
+      category: '工作',
+      startTime: '09:00',
+      endTime: '09:30',
+    }),
+  });
+  check(
+    'POST /recurring',
+    response.status === 201 &&
+      response.body?.data?.text === 'Daily standup' &&
+      response.body?.data?.weekdaysMask === 127,
+    `status=${response.status}`,
+  );
+  const recurringId = response.body?.data?.id;
+
+  response = await request('/recurring', {
+    headers: authHeaders(tokenA),
+  });
+  const listedRecurring = Array.isArray(response.body?.data)
+    ? response.body.data.find((entry) => entry.id === recurringId)
+    : null;
+  check(
+    'GET /recurring',
+    response.status === 200 && listedRecurring?.id === recurringId,
+    `status=${response.status}`,
+  );
+
+  response = await request(`/recurring/${recurringId}`, {
+    method: 'PATCH',
+    headers: authHeaders(tokenA),
+    body: JSON.stringify({
+      text: 'Updated standup',
+      startDate: recurringStart,
+      endDate: recurringEnd,
+      weekdaysMask: 31,
+      category: '工作',
+      startTime: '09:30',
+      endTime: '10:00',
+    }),
+  });
+  check(
+    'PATCH /recurring/:id',
+    response.status === 200 &&
+      response.body?.data?.text === 'Updated standup' &&
+      response.body?.data?.weekdaysMask === 31,
     `status=${response.status}`,
   );
 
@@ -235,6 +328,38 @@ async function main() {
   check(
     'Soft-deleted item hidden',
     response.status === 200 && deletedItemStillVisible === false,
+    `status=${response.status}`,
+  );
+
+  response = await request(`/items/${itemId}/restore`, {
+    method: 'POST',
+    headers: authHeaders(tokenA),
+  });
+  check(
+    'POST /items/:id/restore',
+    response.status === 200 &&
+      response.body?.data?.id === itemId &&
+      response.body?.data?.deletedAt === null,
+    `status=${response.status}`,
+  );
+
+  response = await request('/items', { headers: authHeaders(tokenA) });
+  const restoredItemVisible = Array.isArray(response.body?.data)
+    ? response.body.data.some((item) => item.id === itemId)
+    : false;
+  check(
+    'Restored item visible',
+    response.status === 200 && restoredItemVisible === true,
+    `status=${response.status}`,
+  );
+
+  response = await request(`/recurring/${recurringId}`, {
+    method: 'DELETE',
+    headers: authHeaders(tokenA),
+  });
+  check(
+    'DELETE /recurring/:id',
+    response.status === 200 && response.body?.data?.pausedAt,
     `status=${response.status}`,
   );
 

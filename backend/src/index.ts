@@ -5,6 +5,8 @@ import { AppError, errorResponse } from './lib/errors';
 import authRoutes from './routes/auth';
 import itemRoutes from './routes/items';
 import aiRoutes from './routes/ai';
+import activityRoutes from './routes/activity';
+import recurringRoutes from './routes/recurring';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
 const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:3000';
@@ -15,6 +17,8 @@ async function registerApiRoutes(app: FastifyInstance) {
   await app.register(authRoutes, { prefix: '/auth' });
   await app.register(itemRoutes, { prefix: '/items' });
   await app.register(aiRoutes, { prefix: '/ai' });
+  await app.register(activityRoutes, { prefix: '/activity' });
+  await app.register(recurringRoutes, { prefix: '/recurring' });
 }
 
 async function main() {
@@ -62,6 +66,9 @@ async function main() {
   // Verify database connection
   try {
     await prisma.$connect();
+    await prisma.$executeRawUnsafe(
+      'UPDATE "list_items" SET "completed_at" = "updated_at" WHERE "completed" = 1 AND "completed_at" IS NULL',
+    );
     console.log('Database connected');
   } catch (err) {
     console.error('Database connection failed:', err);

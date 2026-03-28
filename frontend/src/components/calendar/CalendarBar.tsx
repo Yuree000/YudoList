@@ -1,23 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, CalendarDays, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { getLocalToday, parseLocalDate, shiftLocalDate } from '../../lib/localDate';
 import { useListStore } from '../../stores/listStore';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-function today(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
 function formatDisplay(date: string): string {
-  const d = new Date(date + 'T00:00:00');
+  const d = parseLocalDate(date);
   return d.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'short' });
-}
-
-function shiftDate(date: string, days: number): string {
-  const d = new Date(date + 'T00:00:00');
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
 }
 
 function getDaysInMonth(year: number, month: number): number {
@@ -41,11 +32,11 @@ interface MonthPickerProps {
 
 function MonthPicker({ current, onSelect, onClose }: MonthPickerProps) {
   const [view, setView] = useState(() => {
-    const d = new Date((current || today()) + 'T00:00:00');
+    const d = parseLocalDate(current || getLocalToday());
     return { year: d.getFullYear(), month: d.getMonth() };
   });
 
-  const t = today();
+  const t = getLocalToday();
   const daysInMonth = getDaysInMonth(view.year, view.month);
   const firstDay = getFirstDayOfMonth(view.year, view.month);
   const cells: (number | null)[] = [
@@ -143,7 +134,7 @@ function MonthPicker({ current, onSelect, onClose }: MonthPickerProps) {
       <div className="mt-3 border-t pt-3" style={{ borderColor: 'var(--color-border)' }}>
         <button
           type="button"
-          onClick={() => { onSelect(today()); onClose(); }}
+          onClick={() => { onSelect(getLocalToday()); onClose(); }}
           className="w-full rounded-full py-1.5 text-xs transition hover:opacity-70"
           style={{ border: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}
         >
@@ -175,10 +166,10 @@ export function CalendarBar() {
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  const active = selectedDate ?? today();
+  const active = selectedDate ?? getLocalToday();
 
   const go = (days: number) => {
-    setSelectedDate(shiftDate(active, days));
+    setSelectedDate(shiftLocalDate(active, days));
   };
 
   return (

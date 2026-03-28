@@ -2,6 +2,7 @@ import { useEffect, useEffectEvent } from 'react';
 import { AuthPage } from './components/auth/AuthPage';
 import { AuthenticatedHome } from './components/layout/AuthenticatedHome';
 import { BootScreen } from './components/layout/BootScreen';
+import { ApiClientError } from './lib/api';
 import { focusSearchInput } from './lib/searchRef';
 import { useAuthStore } from './stores/authStore';
 import { useListStore } from './stores/listStore';
@@ -23,12 +24,45 @@ export default function App() {
   const syncSurface = useEffectEvent(() => {
     if (authStatus !== 'authenticated') {
       clearItems();
-      return;
+      return undefined;
     }
 
-    void loadItems().catch(() => {
-      clearItems();
-    });
+    let disposed = false;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const attemptLoad = async (attempt: number) => {
+      try {
+        await loadItems();
+      } catch (error) {
+        if (disposed) {
+          return;
+        }
+
+        const isRetryable =
+          !(error instanceof ApiClientError)
+          || error.error === 'REQUEST_TIMEOUT'
+          || error.error === 'REQUEST_FAILED'
+          || error.code >= 500;
+
+        if (!isRetryable || attempt >= 4) {
+          clearItems();
+          return;
+        }
+
+        retryTimer = setTimeout(() => {
+          void attemptLoad(attempt + 1);
+        }, 1200 * (attempt + 1));
+      }
+    };
+
+    void attemptLoad(0);
+
+    return () => {
+      disposed = true;
+      if (retryTimer) {
+        clearTimeout(retryTimer);
+      }
+    };
   });
 
   const bindOnlineRecovery = useEffectEvent(() => {
@@ -52,7 +86,7 @@ export default function App() {
   }, [bootApplication]);
 
   useEffect(() => {
-    syncSurface();
+    return syncSurface();
   }, [authStatus, syncSurface]);
 
   useEffect(() => bindOnlineRecovery(), [bindOnlineRecovery]);

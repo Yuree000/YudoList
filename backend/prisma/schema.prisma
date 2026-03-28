@@ -16,32 +16,60 @@ model User {
   createdAt    BigInt  @default(0) @map("created_at")
   updatedAt    BigInt  @default(0) @map("updated_at")
 
-  items ListItem[]
+  items            ListItem[]
+  recurringSeries  RecurringSeries[]
 
   @@map("users")
 }
 
 model ListItem {
-  id         String  @id @default(uuid())
-  userId     String  @map("user_id")
-  text       String  @default("")
-  completed  Boolean @default(false)
-  level      Int     @default(0) // 0-4
-  type       String  @default("task") // "task" | "heading"
-  orderIndex Float   @default(0) @map("order_index")
-  dueDate    String? @map("due_date")     // "YYYY-MM-DD" or null
-  startTime  String? @map("start_time")  // "HH:MM" or null
-  endTime    String? @map("end_time")    // "HH:MM" or null
-  category   String? @map("category")   // "学习" | "生活" | "工作" | null
-  createdAt  BigInt  @default(0) @map("created_at")
-  updatedAt  BigInt  @default(0) @map("updated_at")
-  deletedAt  BigInt? @map("deleted_at")
+  id          String           @id @default(uuid())
+  userId      String           @map("user_id")
+  text        String           @default("")
+  completed   Boolean          @default(false)
+  completedAt BigInt?          @map("completed_at")
+  level       Int              @default(0) // 0-4
+  type        String           @default("task") // "task" | "heading"
+  orderIndex  Float            @default(0) @map("order_index")
+  dueDate     String?          @map("due_date")     // "YYYY-MM-DD" or null
+  startTime   String?          @map("start_time")  // "HH:MM" or null
+  endTime     String?          @map("end_time")    // "HH:MM" or null
+  category    String?          @map("category")   // "学习" | "生活" | "工作" | null
+  seriesId    String?          @map("series_id")
+  createdAt   BigInt           @default(0) @map("created_at")
+  updatedAt   BigInt           @default(0) @map("updated_at")
+  deletedAt   BigInt?          @map("deleted_at")
 
-  user User @relation(fields: [userId], references: [id])
+  user   User             @relation(fields: [userId], references: [id])
+  series RecurringSeries? @relation(fields: [seriesId], references: [id])
 
   @@index([userId, orderIndex])
   @@index([userId, deletedAt])
   @@index([userId, dueDate])
+  @@index([userId, completedAt])
+  @@index([seriesId, dueDate])
   @@index([deletedAt])
   @@map("list_items")
+}
+
+model RecurringSeries {
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  text         String
+  startDate    String    @map("start_date")
+  endDate      String    @map("end_date")
+  weekdaysMask Int       @default(0) @map("weekdays_mask")
+  category     String?   @map("category")
+  startTime    String?   @map("start_time")
+  endTime      String?   @map("end_time")
+  pausedAt     BigInt?   @map("paused_at")
+  createdAt    BigInt    @default(0) @map("created_at")
+  updatedAt    BigInt    @default(0) @map("updated_at")
+
+  user  User       @relation(fields: [userId], references: [id])
+  items ListItem[]
+
+  @@index([userId, pausedAt])
+  @@index([userId, updatedAt])
+  @@map("recurring_series")
 }

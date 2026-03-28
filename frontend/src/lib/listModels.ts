@@ -32,6 +32,7 @@ export function createOptimisticEntry(input: {
   startTime?: string | null;
   endTime?: string | null;
   category?: import('../sharedTypes').ItemCategory | null;
+  seriesId?: string | null;
 }): ListEntry {
   const now = Date.now();
   const tempId = `temp-${crypto.randomUUID()}`;
@@ -42,6 +43,7 @@ export function createOptimisticEntry(input: {
     userId: input.userId,
     text: input.text ?? '',
     completed: false,
+    completedAt: null,
     level: clampLevel(input.level),
     type: input.type,
     orderIndex: input.orderIndex,
@@ -49,6 +51,7 @@ export function createOptimisticEntry(input: {
     startTime: input.startTime ?? null,
     endTime: input.endTime ?? null,
     category: input.category ?? null,
+    seriesId: input.seriesId ?? null,
     createdAt: now,
     updatedAt: now,
     deletedAt: null,

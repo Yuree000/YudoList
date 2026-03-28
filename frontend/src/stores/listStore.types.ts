@@ -53,6 +53,8 @@ export interface ListState {
   clearSelection: () => void;
   deleteSelected: () => Promise<void>;
   // S4: undo/redo
+  beginHistoryBatch: () => void;
+  finishHistoryBatch: () => void;
   undo: () => Promise<void>;
   redo: () => Promise<void>;
   // Calendar

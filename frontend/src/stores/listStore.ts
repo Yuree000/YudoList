@@ -31,9 +31,15 @@ export const useListStore = create<ListState>((set, get) => ({
 
     // Guard to prevent recursive history recording during undo/redo
     let isApplyingHistory = false;
+    let historyBatch: UndoableCommand[] | null = null;
 
     function pushCommand(cmd: UndoableCommand) {
       if (isApplyingHistory) return;
+      if (historyBatch) {
+        historyBatch.push(cmd);
+        return;
+      }
+
       set((state) => ({
         undoStack: [...state.undoStack.slice(-49), cmd],
         redoStack: [],
@@ -47,6 +53,41 @@ export const useListStore = create<ListState>((set, get) => ({
       } finally {
         isApplyingHistory = false;
       }
+    }
+
+    async function restoreDeletedItem(snapshot: ListEntry, afterClientId?: string) {
+      if (snapshot.isPending) {
+        const newId = await get().createItem({
+          text: snapshot.text,
+          level: snapshot.level,
+          type: snapshot.type,
+          dueDate: snapshot.dueDate,
+          startTime: snapshot.startTime,
+          endTime: snapshot.endTime,
+          category: snapshot.category,
+          afterClientId,
+        });
+
+        if (snapshot.completed) {
+          await get().toggleComplete(newId);
+        }
+
+        return newId;
+      }
+
+      const restored = await api.post<ListItem>(`/items/${snapshot.id}/restore`);
+      set((state) => ({
+        items: sortEntriesForDisplay([
+          ...state.items,
+          {
+            ...toListEntry(restored),
+            clientId: snapshot.clientId,
+          },
+        ]),
+        focusTargetId: snapshot.clientId,
+      }));
+
+      return snapshot.clientId;
     }
 
     return {
@@ -166,16 +207,6 @@ export const useListStore = create<ListState>((set, get) => ({
 
         const completed = !item.completed;
 
-        // Track daily activity in localStorage when completing an item
-        if (completed) {
-          const today = new Date().toISOString().slice(0, 10);
-          const log: Record<string, number> = JSON.parse(
-            localStorage.getItem('yudolist_activity') ?? '{}',
-          );
-          log[today] = (log[today] ?? 0) + 1;
-          localStorage.setItem('yudolist_activity', JSON.stringify(log));
-        }
-
         pushCommand({
           async undo() { await get().toggleComplete(clientId); },
           async redo() { await get().toggleComplete(clientId); },
@@ -278,17 +309,13 @@ export const useListStore = create<ListState>((set, get) => ({
         const sortedSnapshot = sortEntries(snapshot);
         const sortedIdx = sortedSnapshot.findIndex((e) => e.clientId === clientId);
         const afterClientId = sortedIdx > 0 ? sortedSnapshot[sortedIdx - 1].clientId : undefined;
+        const itemSnapshot = { ...item };
 
         // Mutable ref so undo can pass clientId to redo
         const restored = { newClientId: null as string | null };
         pushCommand({
           async undo() {
-            const newId = await get().createItem({
-              text: item.text,
-              level: item.level,
-              type: item.type,
-              afterClientId,
-            });
+            const newId = await restoreDeletedItem(itemSnapshot, afterClientId);
             restored.newClientId = newId;
           },
           async redo() {
@@ -349,6 +376,7 @@ export const useListStore = create<ListState>((set, get) => ({
       clear() {
         helpers.clearAllTimers();
         originalTextMap.clear();
+        historyBatch = null;
         set({
           items: [],
           isLoading: false,
@@ -437,6 +465,14 @@ export const useListStore = create<ListState>((set, get) => ({
         const item = get().items.find((entry) => entry.clientId === clientId);
         if (!item) return;
 
+        const previousCategory = item.category;
+        if (previousCategory === category) return;
+
+        pushCommand({
+          async undo() { await get().setCategory(clientId, previousCategory); },
+          async redo() { await get().setCategory(clientId, category); },
+        });
+
         set((state) => ({
           items: replaceEntry(state.items, clientId, (entry) => ({
             ...entry,
@@ -456,6 +492,14 @@ export const useListStore = create<ListState>((set, get) => ({
         const item = get().items.find((entry) => entry.clientId === clientId);
         if (!item) return;
 
+        const previousDueDate = item.dueDate;
+        if (previousDueDate === dueDate) return;
+
+        pushCommand({
+          async undo() { await get().setItemDueDate(clientId, previousDueDate); },
+          async redo() { await get().setItemDueDate(clientId, dueDate); },
+        });
+
         set((state) => ({
           items: replaceEntry(state.items, clientId, (entry) => ({
             ...entry,
@@ -471,6 +515,37 @@ export const useListStore = create<ListState>((set, get) => ({
       },
 
       // --- S4: Undo/Redo ---
+      beginHistoryBatch() {
+        if (!historyBatch) {
+          historyBatch = [];
+        }
+      },
+
+      finishHistoryBatch() {
+        if (!historyBatch) {
+          return;
+        }
+
+        const commands = historyBatch;
+        historyBatch = null;
+        if (commands.length === 0) {
+          return;
+        }
+
+        pushCommand({
+          async undo() {
+            for (let index = commands.length - 1; index >= 0; index -= 1) {
+              await commands[index].undo();
+            }
+          },
+          async redo() {
+            for (const command of commands) {
+              await command.redo();
+            }
+          },
+        });
+      },
+
       async undo() {
         const { undoStack } = get();
         if (undoStack.length === 0) return;

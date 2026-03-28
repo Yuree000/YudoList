@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { api, setApiToken } from '../lib/api';
+import { ApiClientError, api, setApiToken } from '../lib/api';
 import type { AuthResponse, User } from '../sharedTypes';
 
 const AUTH_STORAGE_KEY = 'yudolist.auth';
@@ -39,7 +39,7 @@ export const useAuthStore = create<AuthState>()(
           return;
         }
 
-        const { token } = get();
+        const { token, user: cachedUser } = get();
         if (!token) {
           setApiToken(null);
           set({ user: null, status: 'anonymous' });
@@ -48,10 +48,33 @@ export const useAuthStore = create<AuthState>()(
 
         setApiToken(token);
 
-        try {
-          const user = await api.get<User>('/auth/profile');
+        if (cachedUser) {
+          set({ status: 'authenticated' });
+        }
+
+        const loadProfile = async () => {
+          const user = await api.get<User>('/auth/profile', { timeoutMs: 5000 });
           set({ user, status: 'authenticated' });
-        } catch {
+        };
+
+        try {
+          if (cachedUser) {
+            void loadProfile().catch((error) => {
+              if (error instanceof ApiClientError && error.code === 401) {
+                setApiToken(null);
+                set({ token: null, user: null, status: 'anonymous' });
+              }
+            });
+            return;
+          }
+
+          await loadProfile();
+        } catch (error) {
+          if (error instanceof ApiClientError && error.error === 'REQUEST_TIMEOUT') {
+            set({ user: null, status: 'anonymous' });
+            return;
+          }
+
           setApiToken(null);
           set({ token: null, user: null, status: 'anonymous' });
         }

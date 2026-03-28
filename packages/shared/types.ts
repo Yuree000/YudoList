@@ -22,6 +22,7 @@ export interface ListItem {
   userId: string;
   text: string;
   completed: boolean;
+  completedAt: number | null;
   level: number;       // 0-4
   type: ItemType;
   orderIndex: number;
@@ -29,6 +30,7 @@ export interface ListItem {
   startTime: string | null;  // "HH:MM" or null
   endTime: string | null;    // "HH:MM" or null
   category: ItemCategory | null;
+  seriesId: string | null;
   createdAt: number;
   updatedAt: number;
   deletedAt?: number | null;
@@ -59,6 +61,57 @@ export interface UpdateItemPayload {
 export interface ReorderPayload {
   items: { id: string; orderIndex: number }[];
 }
+
+export interface AiParseCreateItem {
+  text: string;
+  dueDate: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  category: ItemCategory | null;
+  type: ItemType;
+}
+
+export interface AiParseActionItem {
+  id: string;
+}
+
+export interface AiParseResult {
+  creates: AiParseCreateItem[];
+  completes: AiParseActionItem[];
+  deletes: AiParseActionItem[];
+}
+
+export interface ActivityDay {
+  date: string;
+  completedCount: number;
+}
+
+export interface RecurringSeries {
+  id: string;
+  userId: string;
+  text: string;
+  startDate: string;
+  endDate: string;
+  weekdaysMask: number;
+  category: ItemCategory | null;
+  startTime: string | null;
+  endTime: string | null;
+  pausedAt: number | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface CreateRecurringSeriesPayload {
+  text: string;
+  startDate: string;
+  endDate: string;
+  weekdaysMask: number;
+  category?: ItemCategory | null;
+  startTime?: string | null;
+  endTime?: string | null;
+}
+
+export interface UpdateRecurringSeriesPayload extends CreateRecurringSeriesPayload {}
 
 export interface ApiResponse<T = unknown> {
   code: number;

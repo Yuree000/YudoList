@@ -32,6 +32,7 @@ async function main() {
   ];
 
   await prisma.$transaction([
+    prisma.recurringSeries.deleteMany({ where: { userId: user.id } }),
     prisma.listItem.deleteMany({ where: { userId: user.id } }),
     prisma.listItem.createMany({
       data: sampleItems.map((item) => ({
@@ -41,6 +42,7 @@ async function main() {
         level: item.level,
         orderIndex: item.orderIndex,
         completed: item.completed ?? false,
+        completedAt: item.completed ? now : null,
         createdAt: now,
         updatedAt: now,
       })),

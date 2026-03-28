@@ -4,6 +4,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { Check, GripVertical, CalendarClock, X, Heading } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useKeyboard } from '../../hooks/useKeyboard';
+import { parseLocalDate } from '../../lib/localDate';
 import type { ListEntry } from '../../lib/listModels';
 import type { ItemCategory } from '../../sharedTypes';
 import { useListStore } from '../../stores/listStore';
@@ -23,7 +24,7 @@ function nextCategory(current: ItemCategory | null): ItemCategory | null {
 }
 
 function formatDeadline(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00');
+  const d = parseLocalDate(dateStr);
   return d.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
 }
 
